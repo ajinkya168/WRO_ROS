@@ -54,6 +54,7 @@ install(PROGRAMS
   src/obstacle_challenge.py
   src/spawn_dummy_obstacle.py
   src/spawn_dummy_obstacle2.py
+  src/obstacle_challenge.py
   DESTINATION lib/${PROJECT_NAME}
 )
 install(

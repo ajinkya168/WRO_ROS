@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 
 import rclpy
 from rclpy.node import Node
@@ -6,7 +6,7 @@ from rclpy.action import ActionClient
 from nav2_msgs.action import NavigateToPose
 from std_msgs.msg import String
 import tf2_ros
-from tf2_ros import TransformException
+from tf2_ros import TransformException, Buffer
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 from geometry_msgs.msg import PoseStamped, TransformStamped
 import math
@@ -24,6 +24,7 @@ class MultiGoalWithYaw(Node):
         super().__init__('multi_goal_yaw_client')
         self._client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
         self.color_sub = self.create_subscription(String, '/color_direction', self.color_callback, 10)
+        self.tf_buffer = Buffer()
         
     def color_callback(self, msg):
         try:
@@ -124,7 +125,6 @@ def main(args=None):
 
     node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

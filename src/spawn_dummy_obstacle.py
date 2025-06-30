@@ -1,75 +1,61 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
 
-import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import LaserScan
+import rclpy
 from std_msgs.msg import String
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import PoseStamped, Point32
+from sensor_msgs.msg import PointCloud2
 import math
 
-class RVizDummyObstacle(Node):
+class ColorObstacleInjector(Node):
     def __init__(self):
-        super().__init__('rviz_dummy_obstacle')
-        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
-        self.marker_pub = self.create_publisher(Marker, '/dummy_marker', 10)
+        super().__init__('color_obstacle_injector')
+        self.color = None
+        self.latest_pose = None
 
-        self.spawned = False
-        self.detected_points = []
+        self.sub_color = self.create_subscription(String, '/color_direction', self.color_cb, 10)
+        self.sub_pose = self.create_subscription(PoseStamped, '/marker_pose', self.pose_cb, 10)
+        self.pub = self.create_publisher(PointCloud2, '/dummy_obstacles', 10)
 
-        self.marker_id = 0
-    
+    def color_cb(self, msg):
+        self.color = msg.data.lower()
+        self.publish_obstacle()
 
+    def pose_cb(self, msg):
+        self.latest_pose = msg
+        self.publish_obstacle()
 
+    def publish_obstacle(self):
+        if not self.color or not self.latest_pose:
+            return
 
-    def scan_callback(self, msg: LaserScan):
-        angle = msg.angle_min
-        for r in msg.ranges:
-            if 0.2 < r < 1.0:  # Threshold to detect an object
-                x = r * math.cos(angle)
-                y = r * math.sin(angle)
-                self.add_marker_if_new(x, y)
-            angle += msg.angle_increment
+        direction = 1 if self.color == "red" else -1  # red -> right, green -> left
+        offset = 0.5  # meters to side
 
-    def add_marker_if_new(self, x, y):
-        for (px, py) in self.detected_points:
-            if abs(x - px) < 0.1 and abs(y - py) < 0.1:
-                return  # Already marked
+        angle = self.get_yaw_from_quaternion(self.latest_pose.pose.orientation)
+        dx = math.cos(angle)
+        dy = math.sin(angle)
 
-        self.detected_points.append((x, y))
-        self.publish_marker(x, y)
+        # Perpendicular to heading
+        px = self.latest_pose.pose.position.x - dy * offset * direction
+        py = self.latest_pose.pose.position.y + dx * offset * direction
 
-    def publish_marker(self, x, y):
-        marker = Marker()
-        marker.header.frame_id = "map"  # or "map" if you transform coordinates
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = "dummy"
-        marker.id = self.marker_id
-        self.marker_id += 1
-        
-        marker.type = Marker.CUBE
-        marker.action = Marker.ADD
-        
-        marker.pose.position.x = x
-        marker.pose.position.y = y
-        marker.pose.position.z = 0.05
-        marker.pose.orientation.w = 1.0
+        cloud = PointCloud()
+        cloud.header = self.latest_pose.header
+        pt = Point32(x=px, y=py, z=0.0)
+        cloud.points.append(pt)
 
-        marker.scale.x = 0.1
-        marker.scale.y = 0.1
-        marker.scale.z = 0.1
+        self.pub.publish(cloud)
+        self.get_logger().info(f"Injected virtual obstacle {self.color} at ({px:.2f}, {py:.2f})")
 
-        marker.color.r = 1.0
-        marker.color.g = 0.0
-        marker.color.b = 0.0
-        marker.color.a = 1.0
-
-        self.marker_pub.publish(marker)
-        self.get_logger().info("Published dummy marker to RViz.")
+    def get_yaw_from_quaternion(self, q):
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        return math.atan2(siny_cosp, cosy_cosp)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = RVizDummyObstacle()
+    node = ColorObstacleInjector()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

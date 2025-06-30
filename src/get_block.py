@@ -220,7 +220,7 @@ class ImageProcessor(Node):
 
             # print("ITS THE FIRST LOOP")
             # FOR GREEN BOX
-            if cv2.contourArea(max_cnt) > cv2.contourArea(max_cnt1) and cv2.contourArea(max_cnt) > cv2.contourArea(max_cnt2):
+            if cv2.contourArea(max_cnt) > cv2.contourArea(max_cnt1): #and cv2.contourArea(max_cnt) > cv2.contourArea(max_cnt2):
                 if cv2.contourArea(max_cnt) > 1000 and cv2.contourArea(max_cnt) < 306000:
                     # Draw a rectange on the contour
                     rect = cv2.minAreaRect(max_cnt)
@@ -234,7 +234,7 @@ class ImageProcessor(Node):
 
 
             # FOR RED BOX
-            if cv2.contourArea(max_cnt1) > cv2.contourArea(max_cnt) and cv2.contourArea(max_cnt1) > cv2.contourArea(max_cnt2):
+            if cv2.contourArea(max_cnt1) > cv2.contourArea(max_cnt): #and cv2.contourArea(max_cnt1) > cv2.contourArea(max_cnt2):
                 if (cv2.contourArea(max_cnt1) > 1000 and cv2.contourArea(max_cnt1) < 306000):
                     # Draw a rectange on the contour
                     rect1 = cv2.minAreaRect(max_cnt1)
